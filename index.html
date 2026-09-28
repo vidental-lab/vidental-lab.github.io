@@ -367,7 +367,7 @@
 
 <section id="contact">
   <div class="wrap contact-grid">
-    <form onsubmit="return false;">
+    <form id="contact-form">
       <div>
         <label for="enquiry" style="font-size:1.6rem; font-weight:600; color:var(--accent);">Enquiry</label>
         <select id="enquiry" style="background:var(--bg-panel); border:1px solid var(--line); color:var(--ink); padding:16px 16px; font-family:inherit; font-size:1.1rem; border-radius:2px; width:100%;">
@@ -391,6 +391,7 @@
         <textarea id="msg" placeholder="Tell us about the case or question"></textarea>
       </div>
       <button type="submit" class="btn" style="border:none; cursor:pointer; width:fit-content;">Send message</button>
+      <div id="contact-status" class="stl-filename" style="display:none;"></div>
     </form>
     <div>
       <div class="section-label" style="font-size:1.6rem;">Contact</div>
@@ -536,8 +537,8 @@
       </form>
     </div>
     <div class="pickup-success" id="pickup-success">
-      <h3>Request sent</h3>
-      <p>Thanks — we'll be in touch shortly to confirm your pickup.</p>
+      <h3>Almost done</h3>
+      <p>Your email app should open with your request ready. Press <strong>Send</strong> there to finish. If nothing opens, email videntallab@hotmail.com or call 0452 259 339.</p>
     </div>
   </div>
 </div>
@@ -782,10 +783,38 @@
   pickupOverlay.addEventListener('click', function(e){
     if(e.target === pickupOverlay){ closePickup(); }
   });
+  var LAB_EMAIL = 'videntallab@hotmail.com';
+  function openMail(subject, body){
+    window.location.href = 'mailto:' + LAB_EMAIL +
+      '?subject=' + encodeURIComponent(subject) +
+      '&body=' + encodeURIComponent(body);
+  }
+  function val(id){ var el = document.getElementById(id); return el && el.value ? el.value.trim() : ''; }
+
   document.getElementById('pickup-form').addEventListener('submit', function(e){
     e.preventDefault();
+    var body = 'Case pickup request\n\n' +
+      'Practice name: ' + val('pu-name') + '\n' +
+      'Phone: ' + val('pu-phone') + '\n' +
+      'Preferred pickup date: ' + val('pu-date') + '\n' +
+      'Case notes: ' + val('pu-notes') + '\n';
     pickupFormView.style.display = 'none';
     pickupSuccess.style.display = 'block';
+    openMail('Case pickup request - ' + (val('pu-name') || 'new enquiry'), body);
+  });
+
+  document.getElementById('contact-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var sel = document.getElementById('enquiry');
+    var type = sel && sel.value ? sel.options[sel.selectedIndex].text : 'General question';
+    var body = 'Enquiry type: ' + type + '\n' +
+      'Practice name: ' + val('name') + '\n' +
+      'Reply email: ' + val('email') + '\n\n' +
+      val('msg') + '\n';
+    var status = document.getElementById('contact-status');
+    status.style.display = 'block';
+    status.textContent = 'Your email app should open with your message ready. Press Send there to finish. If nothing opens, email ' + LAB_EMAIL + ' or call 0452 259 339.';
+    openMail(type + ' - ' + (val('name') || 'website enquiry'), body);
   });
 })();
 </script>
