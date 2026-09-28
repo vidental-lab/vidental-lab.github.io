@@ -45,6 +45,12 @@
   .navbar{display:flex; align-items:center; justify-content:space-between; padding:18px 0;}
   .brand{font-family:'Newsreader',serif; font-size:1.45rem; font-weight:600; color:var(--hero-ink);}
   nav{display:flex; gap:28px; font-size:0.92rem;}
+  #menu-toggle{
+    display:none; width:44px; height:44px; align-items:center; justify-content:center;
+    background:transparent; color:#FFFFFF; border:1px solid rgba(255,255,255,0.35);
+    border-radius:8px; font-size:1.4rem; line-height:1; cursor:pointer; font-family:inherit;
+  }
+  #menu-toggle:hover{background:rgba(255,255,255,0.12);}
   nav a{
     text-decoration:none; color:#FFFFFF; font-weight:600;
     padding:7px 14px; border-radius:999px;
@@ -221,7 +227,15 @@
     .spec-row .tag{text-align:left;}
     .about-grid, .contact-grid{grid-template-columns:1fr;}
     .service-cards{grid-template-columns:1fr;}
-    nav{display:none;}
+    .labslip-row{grid-template-columns:1fr;}
+    #menu-toggle{display:flex;}
+    nav{
+      display:none; position:absolute; top:100%; left:0; right:0;
+      flex-direction:column; gap:6px; padding:14px 20px 20px;
+      background:var(--hero-bg); border-bottom:1px solid rgba(255,255,255,0.12);
+    }
+    nav.open{display:flex;}
+    nav a{padding:13px 16px; font-size:1.05rem; border-radius:10px;}
   }
 </style>
 </head>
@@ -240,6 +254,7 @@
       <a href="#contact">Contact</a>
       <a href="#labslip" id="labslip-open">Lab Slip</a>
     </nav>
+    <button type="button" id="menu-toggle" aria-label="Open menu" aria-expanded="false">&#9776;</button>
   </div>
 </header>
 
@@ -728,6 +743,22 @@
 
   document.getElementById('ls-print-btn').addEventListener('click', function(){
     window.print();
+  });
+
+  // Mobile menu
+  var menuToggle = document.getElementById('menu-toggle');
+  var mainNav = document.querySelector('nav');
+  function setMenu(open){
+    mainNav.classList.toggle('open', open);
+    menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    menuToggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    menuToggle.innerHTML = open ? '&#10005;' : '&#9776;';
+  }
+  menuToggle.addEventListener('click', function(){
+    setMenu(!mainNav.classList.contains('open'));
+  });
+  document.querySelectorAll('nav a').forEach(function(a){
+    a.addEventListener('click', function(){ setMenu(false); });
   });
 
   // Case pickup modal (trial)
