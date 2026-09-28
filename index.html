@@ -502,10 +502,13 @@
 
     <div class="labslip-actions" style="margin-top:28px; align-items:flex-start; flex-direction:column; gap:14px;">
       <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-        <a href="https://www.dropbox.com/request/8wbt8gpcfq4e9kk0wu9a" target="_blank" rel="noopener" id="ls-stl-btn" style="display:inline-block; text-decoration:none; background:rgba(46,156,143,0.32); color:#000000; border:1px solid rgba(46,156,143,0.5); padding:13px 24px; border-radius:2px; font-size:0.95rem; font-weight:600;">Attach STL File</a>
+        <a href="https://www.dropbox.com/request/8wbt8gpcfq4e9kk0wu9a" target="_blank" rel="noopener" id="ls-stl-btn" class="btn" style="display:inline-block; box-sizing:border-box; width:230px; max-width:100%; text-align:center; text-decoration:none; background:#1F3F8F; color:#FFFFFF; border:1px solid #1F3F8F;">Attach STL File</a>
         <span class="stl-filename">Drop file in Dropbox — opens our upload folder in a new tab</span>
       </div>
-      <button type="button" class="btn" id="ls-print-btn" style="border:none; cursor:pointer;">Print Lab Slip</button>
+      <button type="button" class="btn" id="ls-submit-btn" style="box-sizing:border-box; width:230px; max-width:100%; text-align:center; cursor:pointer;">Submit Lab Slip</button>
+      <span class="stl-filename">Upload any STL files first, then submit your slip so we receive it.</span>
+      <div id="ls-status" class="stl-filename" style="display:none; color:var(--ink); font-weight:600;"></div>
+      <button type="button" class="btn" id="ls-print-btn" style="box-sizing:border-box; width:230px; max-width:100%; text-align:center; cursor:pointer; margin-top:22px; background:transparent; color:var(--ink); border:1px solid var(--ink);">Print Lab Slip</button>
     </div>
   </div>
 </main>
@@ -537,8 +540,8 @@
       </form>
     </div>
     <div class="pickup-success" id="pickup-success">
-      <h3>Almost done</h3>
-      <p>Your email app should open with your request ready. Press <strong>Send</strong> there to finish. If nothing opens, email videntallab@hotmail.com or call 0452 259 339.</p>
+      <h3 id="pickup-success-title">Almost done</h3>
+      <p id="pickup-success-msg"></p>
     </div>
   </div>
 </div>
@@ -783,38 +786,102 @@
   pickupOverlay.addEventListener('click', function(e){
     if(e.target === pickupOverlay){ closePickup(); }
   });
+  // ---- Sending forms to the lab ----
+  // Paste your free Web3Forms access key between the quotes below to deliver forms straight to your inbox.
+  // While it is empty, forms open the visitor's email app instead.
+  var WEB3FORMS_KEY = '56074666-6428-4de4-96fd-68409f1ad32b';
   var LAB_EMAIL = 'videntallab@hotmail.com';
-  function openMail(subject, body){
+  var LAB_PHONE = '0452 259 339';
+
+  function val(id){ var el = document.getElementById(id); return el && el.value ? el.value.trim() : ''; }
+
+  function sendToLab(subject, fields, replyEmail, done){
+    if(WEB3FORMS_KEY){
+      var payload = { access_key: WEB3FORMS_KEY, subject: subject, from_name: 'Vidental Lab website' };
+      if(replyEmail){ payload.email = replyEmail; }
+      fields.forEach(function(f){ payload[f[0]] = f[1] || '-'; });
+      fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(function(r){ return r.json(); })
+      .then(function(res){ done(res && res.success ? 'sent' : 'error'); })
+      .catch(function(){ done('error'); });
+      return;
+    }
+    var body = fields.map(function(f){ return f[0] + ': ' + (f[1] || '-'); }).join('\n');
     window.location.href = 'mailto:' + LAB_EMAIL +
       '?subject=' + encodeURIComponent(subject) +
       '&body=' + encodeURIComponent(body);
+    done('mailto');
   }
-  function val(id){ var el = document.getElementById(id); return el && el.value ? el.value.trim() : ''; }
+
+  function resultText(kind, what){
+    if(kind === 'sent'){ return 'Sent - thank you! We have received your ' + what + ' and will be in touch soon.'; }
+    if(kind === 'mailto'){ return 'Your email app should open with your ' + what + ' ready. Press Send there to finish. If nothing opens, email ' + LAB_EMAIL + ' or call ' + LAB_PHONE + '.'; }
+    return 'Sorry, that did not send. Please email ' + LAB_EMAIL + ' or call ' + LAB_PHONE + '.';
+  }
 
   document.getElementById('pickup-form').addEventListener('submit', function(e){
     e.preventDefault();
-    var body = 'Case pickup request\n\n' +
-      'Practice name: ' + val('pu-name') + '\n' +
-      'Phone: ' + val('pu-phone') + '\n' +
-      'Preferred pickup date: ' + val('pu-date') + '\n' +
-      'Case notes: ' + val('pu-notes') + '\n';
-    pickupFormView.style.display = 'none';
-    pickupSuccess.style.display = 'block';
-    openMail('Case pickup request - ' + (val('pu-name') || 'new enquiry'), body);
+    var btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    sendToLab('Case pickup request - ' + (val('pu-name') || 'new enquiry'), [
+      ['Practice name', val('pu-name')],
+      ['Phone', val('pu-phone')],
+      ['Preferred pickup date', val('pu-date')],
+      ['Case notes', val('pu-notes')]
+    ], '', function(kind){
+      btn.disabled = false; btn.textContent = 'Request pickup';
+      document.getElementById('pickup-success-title').textContent =
+        kind === 'sent' ? 'Request sent' : (kind === 'mailto' ? 'Almost done' : 'Not sent');
+      document.getElementById('pickup-success-msg').textContent = resultText(kind, 'request');
+      pickupFormView.style.display = 'none';
+      pickupSuccess.style.display = 'block';
+    });
   });
 
   document.getElementById('contact-form').addEventListener('submit', function(e){
     e.preventDefault();
+    var btn = e.target.querySelector('button[type="submit"]');
     var sel = document.getElementById('enquiry');
     var type = sel && sel.value ? sel.options[sel.selectedIndex].text : 'General question';
-    var body = 'Enquiry type: ' + type + '\n' +
-      'Practice name: ' + val('name') + '\n' +
-      'Reply email: ' + val('email') + '\n\n' +
-      val('msg') + '\n';
     var status = document.getElementById('contact-status');
+    btn.disabled = true; btn.textContent = 'Sending...';
+    sendToLab(type + ' - ' + (val('name') || 'website enquiry'), [
+      ['Enquiry type', type],
+      ['Practice name', val('name')],
+      ['Message', val('msg')]
+    ], val('email'), function(kind){
+      btn.disabled = false; btn.textContent = 'Send message';
+      status.style.display = 'block';
+      status.textContent = resultText(kind, 'message');
+    });
+  });
+
+  document.getElementById('ls-submit-btn').addEventListener('click', function(){
+    var btn = this;
+    var status = document.getElementById('ls-status');
     status.style.display = 'block';
-    status.textContent = 'Your email app should open with your message ready. Press Send there to finish. If nothing opens, email ' + LAB_EMAIL + ' or call 0452 259 339.';
-    openMail(type + ' - ' + (val('name') || 'website enquiry'), body);
+    if(!val('ls-practice') || !val('ls-patient')){
+      status.textContent = 'Please fill in at least the Practice Name and Patient Name / ID before submitting.';
+      return;
+    }
+    status.textContent = '';
+    btn.disabled = true; btn.textContent = 'Sending...';
+    sendToLab('Lab slip - ' + val('ls-practice') + ' - ' + val('ls-patient'), [
+      ['Practice name', val('ls-practice')],
+      ['Dentist name', val('ls-dentist')],
+      ['Patient name / ID', val('ls-patient')],
+      ['Due date', val('ls-due')],
+      ['Appliance type', val('ls-appliance')],
+      ['Shade / colour code', val('ls-shade')],
+      ['Additional instructions', val('ls-notes')]
+    ], '', function(kind){
+      btn.disabled = false; btn.textContent = 'Submit Lab Slip';
+      status.textContent = resultText(kind, 'lab slip');
+    });
   });
 })();
 </script>
